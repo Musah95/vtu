@@ -1,7 +1,8 @@
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
-from core.providers.dispatch import execute_purchase
+# from core.providers.dispatch import execute_purchase
+from core.providers.tasks import dispatch_purchase
 from core.transactions.models import S
 from core.transactions.services import initiate
 
@@ -65,7 +66,8 @@ def purchase(user, network, phone, amount, reference=None):
         destination=phone,
         payload={"network": net.code, "face_value": str(amount)},
     )
+
     if created and txn.status == S.PROCESSING:
-        # Runs inside the web request for now; we'll move this to a Celery task.
-        txn = execute_purchase(txn.pk)
+        dispatch_purchase.delay(txn.pk)
+        txn.refresh_from_db()
     return txn, created

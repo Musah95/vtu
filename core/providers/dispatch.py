@@ -1,6 +1,8 @@
 import logging
 from decimal import Decimal
 
+from django.utils import timezone
+
 from core.transactions.models import S, Transaction
 from core.transactions.services import mark_failed, mark_success, record_attempt
 
@@ -16,8 +18,6 @@ def _request_id(txn):
 
 
 def _build_request(txn):
-    # Services can put a different value in payload["face_value"] when the
-    # amount sent to the vendor differs from what the user paid (e.g. discounts).
     amount = Decimal(str(txn.payload.get("face_value", txn.amount)))
     return PurchaseRequest(
         service=txn.service,
@@ -36,11 +36,24 @@ def _apply_result(txn, provider, result):
     return Transaction.objects.get(pk=txn.pk)  # UNKNOWN: leave as is
 
 
+def _claim(txn_id):
+    """
+    Atomically mark a transaction as 'being dispatched'. The database applies
+    this UPDATE to exactly one caller, so two workers can never both send it.
+    """
+    claimed = Transaction.objects.filter(
+        pk=txn_id, status=S.PROCESSING, dispatched_at__isnull=True
+    ).update(dispatched_at=timezone.now())
+    return claimed == 1
+
+
 def execute_purchase(txn_id):
     """Send a PROCESSING transaction to the providers, in priority order."""
     txn = Transaction.objects.get(pk=txn_id)
     if txn.status != S.PROCESSING:
         return txn
+    if not _claim(txn.pk):                       # NEW: someone else has it
+        return Transaction.objects.get(pk=txn.pk)
 
     request = _build_request(txn)
     routes = ProviderRoute.objects.filter(service=txn.service, is_active=True)
@@ -53,15 +66,17 @@ def execute_purchase(txn_id):
             log.error("Route points to unknown provider %s", route.provider)
             continue
 
+        # NEW: write down who we're about to call BEFORE calling. If the worker
+        # dies mid-call, requery then knows which vendor to ask.
+        record_attempt(txn.pk, route.provider)
+
         try:
             result = adapter.purchase(request)
         except Exception:
-            # A crash or timeout does NOT prove the vendor didn't deliver.
             log.exception("Adapter %s raised during purchase", route.provider)
             result = ProviderResult(ProviderStatus.UNKNOWN, message="Adapter error")
 
         if result.status == ProviderStatus.UNKNOWN:
-            # Stop here: no fallback and no refund. Requery will settle it.
             record_attempt(txn.pk, route.provider, result.provider_reference, result.raw)
             return Transaction.objects.get(pk=txn.pk)
 

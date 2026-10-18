@@ -149,3 +149,18 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
 }
+
+CELERY_BROKER_URL = env("REDIS_URL", default="redis://localhost:6379/0")
+CELERY_TASK_ALWAYS_EAGER = False
+
+# At-most-once delivery: if a worker dies mid-task, Celery must NOT replay a
+# vendor call. The sweeper (below) recovers those cases safely instead.
+CELERY_TASK_ACKS_LATE = False
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+CELERY_BEAT_SCHEDULE = {
+    "sweep-stuck-transactions": {
+        "task": "core.providers.tasks.sweep_stuck_transactions",
+        "schedule": 60.0,
+    },
+}
