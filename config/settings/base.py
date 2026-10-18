@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'core.accounts',
     'core.wallet',
+    'core.transactions',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
