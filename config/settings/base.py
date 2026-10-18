@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'core.accounts',
     'core.wallet',
     'core.transactions',
+    'core.providers',
 ]
 
 AUTH_USER_MODEL = "accounts.User"

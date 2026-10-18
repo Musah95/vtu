@@ -93,3 +93,14 @@ def mark_failed(txn_id, reason, provider="", response=None):
     _move(txn, S.REFUNDED)
     txn.save()
     return txn
+
+@transaction.atomic
+def record_attempt(txn_id, provider, provider_reference="", response=None):
+    txn = Transaction.objects.select_for_update().get(pk=txn_id)
+    txn.provider = provider
+    if provider_reference:
+        txn.provider_reference = provider_reference
+    if response is not None:
+        txn.provider_response = response
+    txn.save()
+    return txn
