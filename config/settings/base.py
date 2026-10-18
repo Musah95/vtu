@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'core.accounts',
+    'core.wallet',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
