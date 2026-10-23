@@ -1,7 +1,7 @@
-import re
 from decimal import ROUND_HALF_UP, Decimal
 
-# from core.providers.dispatch import execute_purchase
+from core.common.exceptions import ServiceError as AirtimeError  # noqa: F401
+from core.common.phone import normalize_phone
 from core.providers.tasks import dispatch_purchase
 from core.transactions.models import S
 from core.transactions.services import initiate
@@ -9,25 +9,6 @@ from core.transactions.services import initiate
 from .models import AirtimePricing, Network
 
 SERVICE = "airtime"
-
-
-class AirtimeError(Exception):
-    def __init__(self, code, message):
-        super().__init__(message)
-        self.code = code
-        self.message = message
-
-
-def normalize_phone(raw):
-    """Accepts 08012345678, +2348012345678, 2348012345678 -> 08012345678."""
-    digits = re.sub(r"[\s\-]", "", str(raw))
-    if digits.startswith("+234"):
-        digits = "0" + digits[4:]
-    elif digits.startswith("234") and len(digits) == 13:
-        digits = "0" + digits[3:]
-    if not re.fullmatch(r"0[789][01]\d{8}", digits):
-        raise AirtimeError("INVALID_NUMBER", "Enter a valid Nigerian phone number.")
-    return digits
 
 
 def get_network(code):
@@ -66,7 +47,6 @@ def purchase(user, network, phone, amount, reference=None):
         destination=phone,
         payload={"network": net.code, "face_value": str(amount)},
     )
-
     if created and txn.status == S.PROCESSING:
         dispatch_purchase.delay(txn.pk)
         txn.refresh_from_db()

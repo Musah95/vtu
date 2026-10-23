@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'core.transactions',
     'core.providers',
     'services.airtime',
+    'services.data',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
