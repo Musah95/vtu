@@ -1,12 +1,13 @@
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from core.common.exceptions import ServiceError as AirtimeError  # noqa: F401
 from core.common.phone import normalize_phone
+from core.pricing.services import resolve_price, rule_for_role
 from core.providers.tasks import dispatch_purchase
 from core.transactions.models import S
 from core.transactions.services import initiate
 
-from .models import AirtimePricing, Network
+from .models import Network
 
 SERVICE = "airtime"
 
@@ -25,10 +26,8 @@ def quote(user, network, amount):
             "INVALID_AMOUNT",
             f"Amount must be between {network.min_amount} and {network.max_amount}.",
         )
-    rule = AirtimePricing.objects.filter(network=network, role=user.role).first()
-    discount = rule.discount_percent if rule else Decimal("0")
-    price = amount * (Decimal("100") - discount) / Decimal("100")
-    return price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    rule = rule_for_role(network.pricing.all(), user.role)
+    return resolve_price(amount, rule)
 
 
 def purchase(user, network, phone, amount, reference=None):

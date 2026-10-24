@@ -3,7 +3,7 @@ from core.common.phone import normalize_phone
 from core.providers.tasks import dispatch_purchase
 from core.transactions.models import S
 from core.transactions.services import initiate
-
+from core.pricing.services import resolve_price, rule_for_role
 from .models import DataPlan
 
 SERVICE = "data"
@@ -17,11 +17,9 @@ def get_plan(plan_id):
 
 
 def price_for(user, plan):
-    """The role-specific price if one exists, otherwise the base price."""
-    for override in plan.prices.all():
-        if override.role == user.role:
-            return override.price
-    return plan.base_price
+    """The role-specific price if a rule exists, otherwise the base price."""
+    rule = rule_for_role(plan.prices.all(), user.role)
+    return resolve_price(plan.base_price, rule)
 
 
 def purchase(user, plan_id, phone, reference=None):

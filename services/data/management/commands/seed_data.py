@@ -30,7 +30,7 @@ class Command(BaseCommand):
                     Decimal("0.01"), rounding=ROUND_HALF_UP
                 )
                 DataPlanPrice.objects.get_or_create(
-                    plan=plan, role="reseller", defaults={"price": reseller_price}
+                    plan=plan, role="reseller", defaults={"value": reseller_price}
                 )
         ProviderRoute.objects.get_or_create(
             service="data", provider="mock", defaults={"priority": 10}

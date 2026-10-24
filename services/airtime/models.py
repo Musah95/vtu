@@ -3,7 +3,7 @@ from decimal import Decimal
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
-from core.accounts.models import User
+from core.pricing.models import PriceRuleBase
 
 
 class Network(models.Model):
@@ -20,14 +20,10 @@ class Network(models.Model):
         return self.name
 
 
-class AirtimePricing(models.Model):
-    """Discount a given user role gets on a network (0 = pays full face value)."""
+class AirtimePricing(PriceRuleBase):
+    """Discount a user role gets on a network (role, mode and value come from the base)."""
+    allowed_modes = (PriceRuleBase.Mode.PERCENT_OFF,)
     network = models.ForeignKey(Network, on_delete=models.CASCADE, related_name="pricing")
-    role = models.CharField(max_length=20, choices=User.Role.choices)
-    discount_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=Decimal("0.00"),
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-    )
 
     class Meta:
         constraints = [
@@ -35,4 +31,4 @@ class AirtimePricing(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.network.code} / {self.role}: {self.discount_percent}%"
+        return f"{self.network.code} / {self.role}: {self.value}% off"

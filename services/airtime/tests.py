@@ -10,7 +10,7 @@ from core.wallet.services import credit
 
 from .models import AirtimePricing, Network
 from .services import AirtimeError, normalize_phone, purchase
-
+from django.core.exceptions import ValidationError
 
 class AirtimeTestBase(TestCase):
     def setUp(self):
@@ -19,7 +19,7 @@ class AirtimeTestBase(TestCase):
         )
         credit(self.user, "5000", "fund-1")
         net = Network.objects.create(code="mtn", name="MTN")
-        AirtimePricing.objects.create(network=net, role="customer", discount_percent="2.00")
+        AirtimePricing.objects.create(network=net, role="customer", mode="percent_off", value="2.00")
         ProviderRoute.objects.create(service="airtime", provider="mock", priority=10)
 
     def balance(self, user=None):
@@ -61,6 +61,11 @@ class AirtimeServiceTests(AirtimeTestBase):
         self.assertEqual(txn.status, S.FAILED)
         self.assertEqual(self.balance(), Decimal("5000.00"))
 
+    def test_fixed_rule_is_not_allowed_on_airtime(self):
+        rule = AirtimePricing(network=Network.objects.get(code="mtn"), role="agent",
+                              mode="fixed", value="500")
+        with self.assertRaises(ValidationError):
+            rule.full_clean()
 
 class AirtimeApiTests(AirtimeTestBase):
     url = "/api/v1/airtime/purchase/"

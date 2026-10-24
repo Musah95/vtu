@@ -1,7 +1,6 @@
 from django.db import models
 
-from core.accounts.models import User
-
+from core.pricing.models import PriceRuleBase
 
 class Network(models.TextChoices):
     MTN = "mtn", "MTN"
@@ -32,11 +31,12 @@ class DataPlan(models.Model):
         return f"{self.get_network_display()} {self.category} {self.name} ({self.validity})"
 
 
-class DataPlanPrice(models.Model):
-    """Optional price override for one user role. No row means base_price applies."""
+class DataPlanPrice(PriceRuleBase):
+    """Optional price rule for one user role. No row means base_price applies."""
+    mode = models.CharField(
+        max_length=20, choices=PriceRuleBase.Mode.choices, default=PriceRuleBase.Mode.FIXED
+    )
     plan = models.ForeignKey(DataPlan, on_delete=models.CASCADE, related_name="prices")
-    role = models.CharField(max_length=20, choices=User.Role.choices)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         constraints = [
@@ -44,4 +44,4 @@ class DataPlanPrice(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.plan} / {self.role}: {self.price}"
+        return f"{self.plan} / {self.role}: {self.mode} {self.value}"

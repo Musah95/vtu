@@ -28,7 +28,7 @@ class DataTestBase(TestCase):
             network="mtn", category="SME", name="1GB", validity="30 days",
             provider_code="mtn-1gb", base_price="290",
         )
-        DataPlanPrice.objects.create(plan=self.plan, role="reseller", price="270")
+        DataPlanPrice.objects.create(plan=self.plan, role="reseller", value="270")
         ProviderRoute.objects.create(service="data", provider="mock", priority=10)
 
     def balance(self, user):

@@ -19,7 +19,7 @@ class Command(BaseCommand):
             for role, pct in DISCOUNTS.items():
                 AirtimePricing.objects.get_or_create(
                     network=network, role=role,
-                    defaults={"discount_percent": Decimal(pct)},
+                    defaults={"mode": "percent_off", "value": Decimal(pct)},
                 )
         ProviderRoute.objects.get_or_create(
             service="airtime", provider="mock", defaults={"priority": 10}
