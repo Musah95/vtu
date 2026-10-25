@@ -56,3 +56,37 @@ ALLOWED_TRANSITIONS = {
     S.SUCCESS: set(),
     S.REFUNDED: set(),
 }
+
+class ManualResolution(models.Model):
+    """Append-only record of a human settling a stuck transaction."""
+
+    class Outcome(models.TextChoices):
+        FAILED = "failed", "Marked failed (refunded)"
+        SUCCESS = "success", "Marked successful"
+
+    transaction = models.ForeignKey(
+        Transaction, on_delete=models.PROTECT, related_name="manual_resolutions"
+    )
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    outcome = models.CharField(max_length=10, choices=Outcome.choices)
+    note = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        permissions = [
+            ("resolve_transaction", "Can manually resolve stuck transactions"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise RuntimeError("Manual resolution records cannot be modified.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise RuntimeError("Manual resolution records cannot be deleted.")
+
+    def __str__(self):
+        return f"{self.transaction_id} {self.outcome} by {self.resolved_by_id}"

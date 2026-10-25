@@ -1,4 +1,5 @@
 import uuid
+from datetime import timedelta
 from decimal import Decimal
 
 from django.db import IntegrityError, transaction
@@ -6,8 +7,7 @@ from django.utils import timezone
 
 from core.wallet.services import WalletError, credit, debit
 
-from .models import ALLOWED_TRANSITIONS, S, Transaction
-
+from .models import ALLOWED_TRANSITIONS, S, ManualResolution, Transaction
 
 class InvalidTransition(Exception):
     pass
@@ -104,3 +104,43 @@ def record_attempt(txn_id, provider, provider_reference="", response=None):
         txn.provider_response = response
     txn.save()
     return txn
+
+class ManualResolutionError(Exception):
+    pass
+
+
+# Same threshold the sweeper uses. It guarantees a vendor call that is still
+# in flight has finished before a human settles the order.
+MANUAL_MIN_AGE = timedelta(minutes=2)
+
+
+@transaction.atomic
+def resolve_manually(txn_id, outcome, admin_user, note):
+    """
+    A human settles a stuck PROCESSING transaction.
+    outcome "failed"  -> refund the wallet (same path as automatic failure)
+    outcome "success" -> mark delivered, no refund
+    """
+    note = (note or "").strip()
+    if not note:
+        raise ManualResolutionError("A note explaining why is required.")
+    if outcome not in (ManualResolution.Outcome.FAILED, ManualResolution.Outcome.SUCCESS):
+        raise ManualResolutionError("Unknown outcome.")
+
+    txn = Transaction.objects.select_for_update().get(pk=txn_id)
+
+    if txn.status != S.PROCESSING:
+        raise ManualResolutionError(
+            f"Only processing transactions can be resolved (this one is {txn.status})."
+        )
+    if txn.updated_at > timezone.now() - MANUAL_MIN_AGE:
+        raise ManualResolutionError(
+            "This order was active less than 2 minutes ago. Wait, then try again."
+        )
+
+    ManualResolution.objects.create(
+        transaction=txn, resolved_by=admin_user, outcome=outcome, note=note[:255]
+    )
+    if outcome == ManualResolution.Outcome.FAILED:
+        return mark_failed(txn.pk, f"Manually failed: {note}")
+    return mark_success(txn.pk)
