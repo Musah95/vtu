@@ -1,4 +1,4 @@
-from ..base import ProviderAdapter, ProviderResult, ProviderStatus
+from ..base import LookupResult, LookupStatus, ProviderAdapter, ProviderResult, ProviderStatus
 from ..registry import register
 
 
@@ -37,3 +37,15 @@ class MockProvider(ProviderAdapter):
                 raw={"mock": "delivered"},
             )
         return ProviderResult(ProviderStatus.FAILED, message="Mock: not found")
+
+    def lookup(self, request):
+        number = request.destination
+        if number.endswith("0000"):
+            return LookupResult(LookupStatus.INVALID, message="Mock: account not found")
+        if number.endswith("9999"):
+            return LookupResult(LookupStatus.UNAVAILABLE, message="Mock: vendor timeout")
+        return LookupResult(
+            LookupStatus.VALID, customer_name="MOCK CUSTOMER",
+            details={"current_plan": "Mock Compact", "status": "active"},
+            raw={"mock": "ok"},
+        )

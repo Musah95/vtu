@@ -13,8 +13,11 @@ from core.transactions.models import S
 from core.transactions.services import initiate
 from core.wallet.services import credit
 
-from .base import ProviderAdapter, ProviderResult, ProviderStatus
-from .dispatch import execute_purchase, requery
+from .base import (
+    LookupResult, LookupStatus, ProviderAdapter, ProviderResult, ProviderStatus,
+)
+from .dispatch import execute_purchase, lookup, requery
+
 from .models import ProviderRoute
 from .registry import register
 
@@ -137,3 +140,36 @@ class ClaimAndSweeperTests(TestCase):
         sweep_stuck_transactions()
         txn.refresh_from_db()
         self.assertEqual(txn.status, S.PROCESSING)
+
+@register
+class LookupDown(ProviderAdapter):
+    name = "lookup_down"
+
+    def purchase(self, request):
+        return ProviderResult(ProviderStatus.UNKNOWN)
+
+    def requery(self, request_id):
+        return ProviderResult(ProviderStatus.UNKNOWN)
+
+    def lookup(self, request):
+        return LookupResult(LookupStatus.UNAVAILABLE, message="down")
+
+
+class LookupTests(TestCase):
+    def setUp(self):
+        ProviderRoute.objects.create(service="cable", provider="mock", priority=10)
+
+    def test_valid_account(self):
+        result = lookup("cable", "1234567890")
+        self.assertEqual(result.status, LookupStatus.VALID)
+        self.assertEqual(result.customer_name, "MOCK CUSTOMER")
+
+    def test_unknown_account(self):
+        self.assertEqual(lookup("cable", "1234560000").status, LookupStatus.INVALID)
+
+    def test_falls_back_when_first_provider_is_down(self):
+        ProviderRoute.objects.create(service="cable", provider="lookup_down", priority=1)
+        self.assertEqual(lookup("cable", "1234567890").status, LookupStatus.VALID)
+
+    def test_no_route_means_unavailable(self):
+        self.assertEqual(lookup("electricity", "1234567890").status, LookupStatus.UNAVAILABLE)

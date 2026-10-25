@@ -6,7 +6,11 @@ from django.utils import timezone
 from core.transactions.models import S, Transaction
 from core.transactions.services import mark_failed, mark_success, record_attempt
 
-from .base import ProviderResult, ProviderStatus, PurchaseRequest
+from .base import (
+    LookupRequest, LookupResult, LookupStatus,
+    ProviderResult, ProviderStatus, PurchaseRequest,
+)
+
 from .models import ProviderRoute
 from .registry import ProviderNotFound, get_adapter
 
@@ -100,3 +104,31 @@ def requery(txn_id):
         log.exception("Requery failed for transaction %s", txn.pk)
         return txn
     return _apply_result(txn, txn.provider, result)
+
+def lookup(service, destination, extra=None):
+    """
+    Ask providers who owns an account. Read-only: no wallet, no transaction.
+    Unlike a purchase, falling back to the next provider is safe here,
+    because nothing is bought.
+    """
+    request = LookupRequest(service=service, destination=destination, extra=extra or {})
+    routes = ProviderRoute.objects.filter(service=service, is_active=True)
+    last = LookupResult(LookupStatus.UNAVAILABLE, message="No provider available")
+
+    for route in routes:
+        try:
+            adapter = get_adapter(route.provider)
+            result = adapter.lookup(request)
+        except ProviderNotFound:
+            log.error("Route points to unknown provider %s", route.provider)
+            continue
+        except NotImplementedError:
+            continue                      # this vendor can't verify accounts
+        except Exception:
+            log.exception("Adapter %s raised during lookup", route.provider)
+            result = LookupResult(LookupStatus.UNAVAILABLE, message="Adapter error")
+
+        if result.status in (LookupStatus.VALID, LookupStatus.INVALID):
+            return result
+        last = result
+    return last

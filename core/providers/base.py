@@ -38,3 +38,28 @@ class ProviderAdapter(ABC):
 
     def balance(self) -> Decimal:
         raise NotImplementedError
+
+    def lookup(self, request: LookupRequest) -> LookupResult:
+        """Optional: vendors that can verify an account implement this."""
+        raise NotImplementedError
+
+class LookupStatus(str, Enum):
+    VALID = "valid"
+    INVALID = "invalid"          # the vendor clearly says this account doesn't exist
+    UNAVAILABLE = "unavailable"  # timeout or vendor down: we don't know
+
+
+@dataclass
+class LookupRequest:
+    service: str
+    destination: str             # smartcard, meter number, ...
+    extra: dict = field(default_factory=dict)
+
+
+@dataclass
+class LookupResult:
+    status: LookupStatus
+    customer_name: str = ""
+    details: dict = field(default_factory=dict)
+    message: str = ""
+    raw: dict = field(default_factory=dict)

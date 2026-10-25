@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'services.airtime',
     'services.data',
     'core.pricing',
+    'services.cable',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -144,6 +145,8 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_RATES": {"cable_verify": "20/min"},
+    
 }
 
 CELERY_BROKER_URL = env("REDIS_URL", default="redis://localhost:6379/0")
