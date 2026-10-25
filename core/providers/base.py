@@ -27,22 +27,6 @@ class ProviderResult:
     raw: dict = field(default_factory=dict)
 
 
-class ProviderAdapter(ABC):
-    name: str = ""
-
-    @abstractmethod
-    def purchase(self, request: PurchaseRequest) -> ProviderResult: ...
-
-    @abstractmethod
-    def requery(self, request_id: str) -> ProviderResult: ...
-
-    def balance(self) -> Decimal:
-        raise NotImplementedError
-
-    def lookup(self, request: LookupRequest) -> LookupResult:
-        """Optional: vendors that can verify an account implement this."""
-        raise NotImplementedError
-
 class LookupStatus(str, Enum):
     VALID = "valid"
     INVALID = "invalid"          # the vendor clearly says this account doesn't exist
@@ -63,3 +47,20 @@ class LookupResult:
     details: dict = field(default_factory=dict)
     message: str = ""
     raw: dict = field(default_factory=dict)
+
+
+class ProviderAdapter(ABC):
+    name: str = ""
+
+    @abstractmethod
+    def purchase(self, request: PurchaseRequest) -> ProviderResult: ...
+
+    @abstractmethod
+    def requery(self, request_id: str) -> ProviderResult: ...
+
+    def balance(self) -> Decimal:
+        raise NotImplementedError
+
+    def lookup(self, request: LookupRequest) -> LookupResult:
+        """Optional: vendors that can verify an account implement this."""
+        raise NotImplementedError
