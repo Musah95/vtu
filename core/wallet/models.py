@@ -53,3 +53,35 @@ class LedgerEntry(models.Model):
 
     def delete(self, *args, **kwargs):
         raise RuntimeError("Ledger entries cannot be deleted.")
+
+class ManualFunding(models.Model):
+    """Append-only record of an admin crediting a wallet by hand."""
+    wallet = models.ForeignKey(Wallet, on_delete=models.PROTECT, related_name="manual_fundings")
+    funded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+"
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    note = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0), name="manualfunding_amount_positive"
+            ),
+        ]
+        permissions = [
+            ("fund_wallet", "Can manually fund user wallets"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise RuntimeError("Manual funding records cannot be modified.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise RuntimeError("Manual funding records cannot be deleted.")
+
+    def __str__(self):
+        return f"{self.wallet_id} +{self.amount} by {self.funded_by_id}"
