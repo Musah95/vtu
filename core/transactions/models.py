@@ -20,7 +20,8 @@ class Transaction(models.Model):
     amount = models.DecimalField(max_digits=14, decimal_places=2)       # what the user paid
     cost_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     destination = models.CharField(max_length=50, blank=True)           # phone, smartcard, meter...
-
+    source = models.CharField(max_length=60, blank=True, db_index=True)  # "web" or "api:<key id>"
+    
     provider = models.CharField(max_length=50, blank=True)
     provider_reference = models.CharField(max_length=100, blank=True)
     payload = models.JSONField(default=dict, blank=True)                # service-specific details

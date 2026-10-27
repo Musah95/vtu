@@ -26,9 +26,8 @@ def _move(txn, new_status):
     if new_status in (S.SUCCESS, S.FAILED, S.REFUNDED) and txn.completed_at is None:
         txn.completed_at = timezone.now()
 
-
 def initiate(user, service, amount, reference=None, destination="",
-             payload=None, cost_price=None):
+             payload=None, cost_price=None, source=""):
     """
     Create a transaction and debit the wallet.
     Returns (txn, created). If created is False, this reference was already
@@ -43,6 +42,7 @@ def initiate(user, service, amount, reference=None, destination="",
             txn = Transaction.objects.create(
                 user=user, service=service, reference=reference, amount=amount,
                 destination=destination, payload=payload or {}, cost_price=cost_price,
+                source=source,
             )
     except IntegrityError:
         return Transaction.objects.get(user=user, reference=reference), False

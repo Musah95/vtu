@@ -39,9 +39,9 @@ class ManualResolutionInline(admin.TabularInline):
 class TransactionAdmin(admin.ModelAdmin):
     list_display = (
         "created_at", "user", "service", "destination", "amount",
-        "status", "reference", "request_id",
+        "status", "source", "reference", "request_id",
     )
-    list_filter = ("service", "status")
+    list_filter = ("service", "status", "source")
     search_fields = ("reference", "provider_reference", "destination", "user__username")
     inlines = [ManualResolutionInline]
     action_form = ResolveActionForm

@@ -75,8 +75,7 @@ def price_for(user, package):
     rule = rule_for_role(package.prices.all(), user.role)
     return resolve_price(package.base_price, rule)
 
-
-def purchase(user, verification_id, package_id, phone="", reference=None):
+def purchase(user, verification_id, package_id, phone="", reference=None, source=""):
     """
     Returns (transaction, created).
     created=False means this reference was already used: nothing new happened.
@@ -101,6 +100,7 @@ def purchase(user, verification_id, package_id, phone="", reference=None):
         user, SERVICE, price,
         reference=reference,
         destination=verification.smartcard,       # from the stored verification, never the client
+        source=source,
         payload={
             "operator": verification.operator,
             "package_id": package.pk,

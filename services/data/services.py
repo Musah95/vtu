@@ -21,8 +21,7 @@ def price_for(user, plan):
     rule = rule_for_role(plan.prices.all(), user.role)
     return resolve_price(plan.base_price, rule)
 
-
-def purchase(user, plan_id, phone, reference=None):
+def purchase(user, plan_id, phone, reference=None, source=""):
     """
     Returns (transaction, created).
     created=False means this reference was already used: nothing new happened.
@@ -35,6 +34,7 @@ def purchase(user, plan_id, phone, reference=None):
         user, SERVICE, price,
         reference=reference,
         destination=phone,
+        source=source,
         # Snapshot the plan details: later edits to the plan must not rewrite history.
         payload={
             "network": plan.network,

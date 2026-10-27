@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'services.data',
     'core.pricing',
     'services.cable',
+    'core.apikeys',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -139,7 +140,8 @@ MAILERS = {
 }
 
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "DEFAULT_AUTHENTICATION_CLASSES": [
+        "core.apikeys.authentication.ApiKeyAuthentication",
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

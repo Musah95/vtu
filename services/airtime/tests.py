@@ -12,6 +12,9 @@ from .models import AirtimePricing, Network
 from .services import AirtimeError, normalize_phone, purchase
 from django.core.exceptions import ValidationError
 
+from core.apikeys.services import create_key
+from core.transactions.models import Transaction
+
 class AirtimeTestBase(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
@@ -90,3 +93,27 @@ class AirtimeApiTests(AirtimeTestBase):
         client.force_authenticate(poor)
         response = client.post(self.url, self.body, format="json")
         self.assertEqual(response.status_code, 402)
+
+    def test_api_key_order_records_its_source(self):
+        key, secret = create_key(self.user, "prod")
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION=f"Key {key.key_id}:{secret}")
+        response = client.post(self.url, {**self.body, "reference": "k-1"}, format="json")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(Transaction.objects.get(reference="k-1").source, f"api:{key.key_id}")
+
+    def test_session_order_records_web_source(self):
+        client = APIClient()
+        client.force_authenticate(self.user)
+        client.post(self.url, {**self.body, "reference": "w-1"}, format="json")
+        self.assertEqual(Transaction.objects.get(reference="w-1").source, "web")
+
+    def test_repeated_reference_returns_the_original_order(self):
+        client = APIClient()
+        client.force_authenticate(self.user)
+        first = client.post(self.url, {**self.body, "reference": "dup-1"}, format="json")
+        again = client.post(self.url, {**self.body, "reference": "dup-1"}, format="json")
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(again.status_code, 200)
+        self.assertEqual(again.data["reference"], "dup-1")
+        self.assertEqual(self.balance(), Decimal("4020.00"))

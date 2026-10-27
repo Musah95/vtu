@@ -29,8 +29,7 @@ def quote(user, network, amount):
     rule = rule_for_role(network.pricing.all(), user.role)
     return resolve_price(amount, rule)
 
-
-def purchase(user, network, phone, amount, reference=None):
+def purchase(user, network, phone, amount, reference=None, source=""):
     """
     Returns (transaction, created).
     created=False means this reference was already used: nothing new happened.
@@ -44,6 +43,7 @@ def purchase(user, network, phone, amount, reference=None):
         user, SERVICE, price,
         reference=reference,
         destination=phone,
+        source=source,
         payload={"network": net.code, "face_value": str(amount)},
     )
     if created and txn.status == S.PROCESSING:
