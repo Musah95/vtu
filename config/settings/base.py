@@ -165,3 +165,5 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 60.0,
     },
 }
+
+MANUAL_FUNDING_MAX_AMOUNT = "500000"
